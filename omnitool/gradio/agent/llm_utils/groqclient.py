@@ -49,9 +49,9 @@ def run_groq_interleaved(messages: list, system: str, model_name: str, api_key: 
         final_messages.append({"role": "user", "content": prompt_suffix.strip()})
 
     try:
-        target_model = model_name
-        if not target_model or "deepseek" in target_model:
-            target_model = "qwen/qwen3.8-27b"
+        target_model = model_name or "deepseek-r1-distill-llama-70b"
+        if "qwen" in target_model:
+            target_model = "deepseek-r1-distill-llama-70b"
 
         completion = client.chat.completions.create(
             model=target_model,
