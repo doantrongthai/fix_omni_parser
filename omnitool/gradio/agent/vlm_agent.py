@@ -42,7 +42,7 @@ class VLMAgent:
         if model == "omniparser + gpt-4o":
             self.model = "gpt-4o-2024-11-20"
         elif model == "omniparser + R1":
-            self.model = "deepseek-r1-distill-llama-70b"
+            self.model = "qwen/qwen3.8-27b"
         elif model == "omniparser + qwen2.5vl":
             self.model = "qwen2.5-vl-72b-instruct"
         elif model == "omniparser + o1":
@@ -109,7 +109,7 @@ class VLMAgent:
                 self.total_cost += (token_usage * 15 / 1000000)  # https://openai.com/api/pricing/
             elif 'o3-mini' in self.model:
                 self.total_cost += (token_usage * 1.1 / 1000000)  # https://openai.com/api/pricing/
-        elif "r1" in self.model:
+        elif self.provider == "groq" or "r1" in self.model:
             vlm_response, token_usage = run_groq_interleaved(
                 messages=planner_messages,
                 system=system,
@@ -143,11 +143,52 @@ class VLMAgent:
         if self.print_usage:
             print(f"Total token so far: {self.total_token_usage}. Total cost so far: $USD{self.total_cost:.5f}")
         
-        vlm_response_json = extract_data(vlm_response, "json")
-        vlm_response_json = json.loads(vlm_response_json)
+        vlm_response_json = None
+        try:
+            raw_json_str = extract_data(vlm_response, "json")
+            try:
+                vlm_response_json = json.loads(raw_json_str)
+            except Exception:
+                if "{" in raw_json_str and "}" in raw_json_str:
+                    json_substr = raw_json_str[raw_json_str.find("{"):raw_json_str.rfind("}")+1]
+                    vlm_response_json = json.loads(json_substr)
+        except Exception:
+            pass
+
+        if not vlm_response_json or not isinstance(vlm_response_json, dict):
+            # Fallback: parse plain text Key-Value format (Reasoning, Next Action, Box ID, value)
+            res = {}
+            reasoning_lines = []
+            for line in vlm_response.strip().split("\n"):
+                line_clean = line.strip()
+                if line_clean.startswith("Next Action:"):
+                    res["Next Action"] = line_clean.split("Next Action:", 1)[1].strip()
+                elif line_clean.startswith("Box ID:"):
+                    val = line_clean.split("Box ID:", 1)[1].strip()
+                    try:
+                        res["Box ID"] = int(val)
+                    except Exception:
+                        res["Box ID"] = val
+                elif line_clean.startswith("value:"):
+                    res["value"] = line_clean.split("value:", 1)[1].strip()
+                elif line_clean.startswith("Reasoning:"):
+                    reasoning_lines.append(line_clean.split("Reasoning:", 1)[1].strip())
+                else:
+                    if "Next Action" not in res and line_clean:
+                        reasoning_lines.append(line_clean)
+            if "Next Action" in res:
+                res["Reasoning"] = " ".join(reasoning_lines).strip()
+                vlm_response_json = res
+
+        if not vlm_response_json:
+            print(f"Error parsing response from LLM: {vlm_response}")
+            self.output_callback(f"⚠️ LLM response / parse error: {vlm_response}", sender="bot")
+            response_content = [BetaTextBlock(text=f"LLM Response: {vlm_response}", type='text')]
+            response_message = BetaMessage(id=f'toolu_{uuid.uuid4()}', content=response_content, model='', role='assistant', type='message', stop_reason='end_turn', usage=BetaUsage(input_tokens=0, output_tokens=0))
+            return response_message, {}
 
         img_to_show_base64 = parsed_screen["som_image_base64"]
-        if "Box ID" in vlm_response_json:
+        if "Box ID" in vlm_response_json and vlm_response_json["Box ID"] is not None:
             try:
                 bbox = parsed_screen["parsed_content_list"][int(vlm_response_json["Box ID"])]["bbox"]
                 vlm_response_json["box_centroid_coordinate"] = [int((bbox[0] + bbox[2]) / 2 * screen_width), int((bbox[1] + bbox[3]) / 2 * screen_height)]
@@ -164,12 +205,12 @@ class VLMAgent:
                 img_to_show.save(buffered, format="PNG")
                 img_to_show_base64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
             except:
-                print(f"Error parsing: {vlm_response_json}")
+                print(f"Error parsing box coordinate: {vlm_response_json}")
                 pass
         self.output_callback(f'<img src="data:image/png;base64,{img_to_show_base64}">', sender="bot")
         self.output_callback(
                     f'<details>'
-                    f'  <summary>Parsed Screen elemetns by OmniParser</summary>'
+                    f'  <summary>Parsed Screen elements by OmniParser</summary>'
                     f'  <pre>{screen_info}</pre>'
                     f'</details>',
                     sender="bot"
@@ -189,16 +230,21 @@ class VLMAgent:
                                             name='computer', type='tool_use')
             response_content.append(move_cursor_block)
 
-        if vlm_response_json["Next Action"] == "None":
+        next_action_raw = str(vlm_response_json.get("Next Action", "None"))
+        action_name = next_action_raw.split(",")[0].strip()
+
+        if action_name == "None" or not action_name:
             print("Task paused/completed.")
-        elif vlm_response_json["Next Action"] == "type":
+        elif action_name in ("type", "key", "press"):
+            real_action = "key" if action_name == "press" else action_name
+            type_val = str(vlm_response_json.get("value") or vlm_response_json.get("text") or "")
             sim_content_block = BetaToolUseBlock(id=f'toolu_{uuid.uuid4()}',
-                                        input={'action': vlm_response_json["Next Action"], 'text': vlm_response_json["value"]},
+                                        input={'action': real_action, 'text': type_val},
                                         name='computer', type='tool_use')
             response_content.append(sim_content_block)
         else:
             sim_content_block = BetaToolUseBlock(id=f'toolu_{uuid.uuid4()}',
-                                            input={'action': vlm_response_json["Next Action"]},
+                                            input={'action': action_name},
                                             name='computer', type='tool_use')
             response_content.append(sim_content_block)
         response_message = BetaMessage(id=f'toolu_{uuid.uuid4()}', content=response_content, model='', role='assistant', type='message', stop_reason='tool_use', usage=BetaUsage(input_tokens=0, output_tokens=0))

@@ -608,6 +608,7 @@ with gr.Blocks(theme=gr.themes.Default()) as demo:
                 label="Chatbot History", 
                 autoscroll=True, 
                 height=580,
+                type="tuples",
                 avatar_images=("👤", "🤖")
             )
         with gr.Column(scale=3):

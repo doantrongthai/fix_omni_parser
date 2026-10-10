@@ -48,18 +48,21 @@ class Sender(StrEnum):
 
 
 def setup_state(state):
+    default_groq_key = os.getenv("GROQ_API_KEY", "")
     if "messages" not in state:
         state["messages"] = []
     if "model" not in state:
-        state["model"] = "omniparser + gpt-4o"
+        state["model"] = "omniparser + R1"
     if "provider" not in state:
-        state["provider"] = "openai"
+        state["provider"] = "groq"
     if "openai_api_key" not in state:  # Fetch API keys from environment variables
         state["openai_api_key"] = os.getenv("OPENAI_API_KEY", "")
     if "anthropic_api_key" not in state:
         state["anthropic_api_key"] = os.getenv("ANTHROPIC_API_KEY", "")
-    if "api_key" not in state:
-        state["api_key"] = ""
+    if "groq_api_key" not in state:
+        state["groq_api_key"] = default_groq_key
+    if "api_key" not in state or not state["api_key"]:
+        state["api_key"] = default_groq_key
     if "auth_validated" not in state:
         state["auth_validated"] = False
     if "responses" not in state:
@@ -190,14 +193,17 @@ def valid_params(user_input, state):
     """Validate all requirements and return a list of error messages."""
     errors = []
     
-    for server_name, url in [('Windows Host', 'localhost:5000'), ('OmniParser Server', args.omniparser_server_url)]:
+    for server_name, raw_url in [('Windows Host', 'localhost:5000'), ('OmniParser Server', args.omniparser_server_url)]:
         try:
-            url = f'http://{url}/probe'
-            response = requests.get(url, timeout=3)
+            base_url = raw_url.strip().rstrip('/')
+            if not base_url.startswith(('http://', 'https://')):
+                base_url = f'http://{base_url}'
+            probe_url = f'{base_url}/probe'
+            response = requests.get(probe_url, timeout=10)
             if response.status_code != 200:
                 errors.append(f"{server_name} is not responding")
         except RequestException as e:
-            errors.append(f"{server_name} is not responding")
+            errors.append(f"{server_name} is not responding ({e})")
     
     if not state["api_key"].strip():
         errors.append("LLM API Key is not set")
@@ -303,7 +309,7 @@ with gr.Blocks(theme=gr.themes.Default()) as demo:
                 model = gr.Dropdown(
                     label="Model",
                     choices=["omniparser + gpt-4o", "omniparser + o1", "omniparser + o3-mini", "omniparser + R1", "omniparser + qwen2.5vl", "claude-3-5-sonnet-20241022", "omniparser + gpt-4o-orchestrated", "omniparser + o1-orchestrated", "omniparser + o3-mini-orchestrated", "omniparser + R1-orchestrated", "omniparser + qwen2.5vl-orchestrated"],
-                    value="omniparser + gpt-4o",
+                    value="omniparser + R1",
                     interactive=True,
                 )
             with gr.Column():
@@ -320,7 +326,7 @@ with gr.Blocks(theme=gr.themes.Default()) as demo:
                 provider = gr.Dropdown(
                     label="API Provider",
                     choices=[option.value for option in APIProvider],
-                    value="openai",
+                    value="groq",
                     interactive=False,
                 )
             with gr.Column(2):
@@ -342,7 +348,7 @@ with gr.Blocks(theme=gr.themes.Default()) as demo:
 
     with gr.Row():
         with gr.Column(scale=2):
-            chatbot = gr.Chatbot(label="Chatbot History", autoscroll=True, height=580)
+            chatbot = gr.Chatbot(label="Chatbot History", autoscroll=True, height=580, type="tuples")
         with gr.Column(scale=3):
             iframe = gr.HTML(
                 f'<iframe src="http://{args.windows_host_url}/vnc.html?view_only=1&autoconnect=1&resize=scale" width="100%" height="580" allow="fullscreen"></iframe>',

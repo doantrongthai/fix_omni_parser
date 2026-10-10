@@ -18,8 +18,9 @@ def parse_arguments():
     parser.add_argument('--som_model_path', type=str, default=None, help='Optional local detector path; V3 downloads from Hugging Face by default')
     parser.add_argument('--caption_model_name', type=str, default='florence2', help='Name of the caption model')
     parser.add_argument('--caption_model_path', type=str, default='../../weights/icon_caption_florence', help='Path to the caption model')
-    parser.add_argument('--device', type=str, default='cpu', help='Device to run the model')
-    parser.add_argument('--BOX_TRESHOLD', type=float, default=0.05, help='Threshold for box detection')
+    parser.add_argument('--device', type=str, default='cpu', help='Device to run the model (cuda or cpu)')
+    parser.add_argument('--BOX_TRESHOLD', type=float, default=None, help='Threshold for box detection (defaults to 0.05 on CUDA, 0.15 on CPU)')
+    parser.add_argument('--use_local_semantics', type=lambda x: str(x).lower() == 'true', default=None, help='Enable Florence-2 icon captioning (True on CUDA, False on CPU by default)')
     parser.add_argument('--host', type=str, default='127.0.0.1', help='Host for the API')
     parser.add_argument('--port', type=int, default=8000, help='Port for the API')
     args = parser.parse_args()
@@ -34,8 +35,9 @@ omniparser = Omniparser(config)
 class ParseRequest(BaseModel):
     base64_image: str
 
+@app.post("/parse")
 @app.post("/parse/")
-async def parse(parse_request: ParseRequest):
+def parse(parse_request: ParseRequest):
     print('start parsing...')
     start = time.time()
     dino_labled_img, parsed_content_list = omniparser.parse(parse_request.base64_image)
@@ -43,6 +45,7 @@ async def parse(parse_request: ParseRequest):
     print('time:', latency)
     return {"som_image_base64": dino_labled_img, "parsed_content_list": parsed_content_list, 'latency': latency}
 
+@app.get("/probe")
 @app.get("/probe/")
 async def root():
     return {"message": "Omniparser API ready"}

@@ -18,17 +18,34 @@ import numpy as np
 # %matplotlib inline
 from matplotlib import pyplot as plt
 import easyocr
-from paddleocr import PaddleOCR
+try:
+    from paddleocr import PaddleOCR
+except ImportError:
+    PaddleOCR = None
+
 reader = easyocr.Reader(['en'])
-paddle_ocr = PaddleOCR(
-    lang='en',  # other lang also available
-    use_angle_cls=False,
-    use_gpu=False,  # using cuda will conflict with pytorch in the same process
-    show_log=False,
-    max_batch_size=1024,
-    use_dilation=True,  # improves accuracy
-    det_db_score_mode='slow',  # improves accuracy
-    rec_batch_num=1024)
+paddle_ocr = None
+
+def get_paddle_ocr():
+    global paddle_ocr
+    if paddle_ocr is None and PaddleOCR is not None:
+        try:
+            paddle_ocr = PaddleOCR(
+                lang='en',
+                use_angle_cls=False,
+                use_gpu=False,
+                show_log=False,
+                max_batch_size=1024,
+                use_dilation=True,
+                det_db_score_mode='slow',
+                rec_batch_num=1024)
+        except (TypeError, ValueError):
+            try:
+                paddle_ocr = PaddleOCR(lang='en')
+            except Exception as e:
+                print(f"Warning: Failed to initialize PaddleOCR: {e}")
+                paddle_ocr = None
+    return paddle_ocr
 import time
 import base64
 
@@ -93,6 +110,9 @@ def get_parsed_content_icon(filtered_boxes, starting_idx, image_source, caption_
         non_ocr_boxes = filtered_boxes[starting_idx:]
     else:
         non_ocr_boxes = filtered_boxes
+    model, processor = caption_model_processor['model'], caption_model_processor['processor']
+    if model.device.type == 'cpu' and len(non_ocr_boxes) > 25:
+        non_ocr_boxes = non_ocr_boxes[:25]
     croped_pil_image = []
     for i, coord in enumerate(non_ocr_boxes):
         try:
@@ -103,8 +123,6 @@ def get_parsed_content_icon(filtered_boxes, starting_idx, image_source, caption_
             croped_pil_image.append(to_pil(cropped_image))
         except:
             continue
-
-    model, processor = caption_model_processor['model'], caption_model_processor['processor']
     if not prompt:
         if 'florence' in model.config.name_or_path:
             prompt = "<CAPTION>"
@@ -315,8 +333,8 @@ def remove_overlap_new(boxes, iou_threshold, ocr_bbox=None):
                     else:
                         filtered_boxes.append({'type': 'icon', 'bbox': box1_elem['bbox'], 'interactivity': True, 'content': None, 'source':'box_yolo_content_yolo'})
             else:
-                filtered_boxes.append(box1)
-    return filtered_boxes # torch.tensor(filtered_boxes)
+                filtered_boxes.append({'type': 'icon', 'bbox': box1_elem['bbox'], 'interactivity': True, 'content': None, 'source':'box_yolo_content_yolo'})
+    return filtered_boxes
 
 
 def load_image(image_path: str) -> Tuple[np.array, torch.Tensor]:
@@ -436,12 +454,13 @@ def get_som_labeled_img(image_source: Union[str, Image.Image], model=None, BOX_T
     # annotate the image with labels
     if ocr_bbox:
         ocr_bbox = torch.tensor(ocr_bbox) / torch.Tensor([w, h, w, h])
-        ocr_bbox=ocr_bbox.tolist()
+        ocr_bbox = ocr_bbox.tolist()
+        ocr_bbox_elem = [{'type': 'text', 'bbox':box, 'interactivity':False, 'content':txt, 'source': 'box_ocr_content_ocr'} for box, txt in zip(ocr_bbox, ocr_text) if int_box_area(box, w, h) > 0]
     else:
         print('no ocr bbox!!!')
         ocr_bbox = None
+        ocr_bbox_elem = []
 
-    ocr_bbox_elem = [{'type': 'text', 'bbox':box, 'interactivity':False, 'content':txt, 'source': 'box_ocr_content_ocr'} for box, txt in zip(ocr_bbox, ocr_text) if int_box_area(box, w, h) > 0] 
     xyxy_elem = [{'type': 'icon', 'bbox':box, 'interactivity':True, 'content':None} for box in xyxy.tolist() if int_box_area(box, w, h) > 0]
     filtered_boxes = remove_overlap_new(boxes=xyxy_elem, iou_threshold=iou_threshold, ocr_bbox=ocr_bbox_elem)
     
@@ -466,11 +485,18 @@ def get_som_labeled_img(image_source: Union[str, Image.Image], model=None, BOX_T
         # fill the filtered_boxes_elem None content with parsed_content_icon in order
         for i, box in enumerate(filtered_boxes_elem):
             if box['content'] is None:
-                box['content'] = parsed_content_icon.pop(0)
+                box['content'] = parsed_content_icon.pop(0) if parsed_content_icon else "icon"
         for i, txt in enumerate(parsed_content_icon):
             parsed_content_icon_ls.append(f"Icon Box ID {str(i+icon_start)}: {txt}")
         parsed_content_merged = ocr_text + parsed_content_icon_ls
     else:
+        for i, box in enumerate(filtered_boxes_elem):
+            if box['content'] is None:
+                bx = box['bbox']
+                cx, cy = (bx[0] + bx[2]) / 2, (bx[1] + bx[3]) / 2
+                pos_y = "top" if cy < 0.25 else ("bottom" if cy > 0.75 else "center")
+                pos_x = "left" if cx < 0.33 else ("right" if cx > 0.67 else "middle")
+                box['content'] = f"interactive button/input ({pos_y}-{pos_x})"
         ocr_text = [f"Text Box ID {i}: {txt}" for i, txt in enumerate(ocr_text)]
         parsed_content_merged = ocr_text
     print('time to get parsed content:', time.time()-time1)
@@ -520,14 +546,22 @@ def check_ocr_box(image_source: Union[str, Image.Image], display_img = True, out
     image_np = np.array(image_source)
     w, h = image_source.size
     if use_paddleocr:
-        if easyocr_args is None:
-            text_threshold = 0.5
+        p_ocr = get_paddle_ocr()
+        if p_ocr is not None:
+            if easyocr_args is None:
+                text_threshold = 0.5
+            else:
+                text_threshold = easyocr_args['text_threshold']
+            try:
+                result = p_ocr.ocr(image_np, cls=False)[0]
+                coord = [item[0] for item in result if item[1][1] > text_threshold]
+                text = [item[1][0] for item in result if item[1][1] > text_threshold]
+            except Exception as e:
+                print(f"PaddleOCR execution failed ({e}), falling back to EasyOCR")
+                use_paddleocr = False
         else:
-            text_threshold = easyocr_args['text_threshold']
-        result = paddle_ocr.ocr(image_np, cls=False)[0]
-        coord = [item[0] for item in result if item[1][1] > text_threshold]
-        text = [item[1][0] for item in result if item[1][1] > text_threshold]
-    else:  # EasyOCR
+            use_paddleocr = False
+    if not use_paddleocr:  # EasyOCR
         if easyocr_args is None:
             easyocr_args = {}
         result = reader.readtext(image_np, **easyocr_args)
