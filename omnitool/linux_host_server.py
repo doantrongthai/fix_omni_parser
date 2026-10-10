@@ -2,6 +2,13 @@ import os
 import sys
 import shlex
 import subprocess
+
+# Tự động cấp quyền hiển thị màn hình X11/Xwayland cho PyAutoGUI trên Linux
+try:
+    subprocess.run(["xhost", "+local:"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+except Exception:
+    pass
+
 import threading
 import pyautogui
 from PIL import Image
