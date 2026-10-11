@@ -42,7 +42,7 @@ class VLMAgent:
         if model == "omniparser + gpt-4o":
             self.model = "gpt-4o-2024-11-20"
         elif model == "omniparser + R1":
-            self.model = "deepseek-r1-distill-llama-70b"
+            self.model = "llama-3.3-70b-versatile"
         elif model == "omniparser + qwen2.5vl":
             self.model = "qwen2.5-vl-72b-instruct"
         elif model == "omniparser + o1":
@@ -109,7 +109,7 @@ class VLMAgent:
                 self.total_cost += (token_usage * 15 / 1000000)  # https://openai.com/api/pricing/
             elif 'o3-mini' in self.model:
                 self.total_cost += (token_usage * 1.1 / 1000000)  # https://openai.com/api/pricing/
-        elif self.provider == "groq" or "r1" in self.model:
+        elif self.provider == "groq" or "r1" in self.model or "llama" in self.model:
             vlm_response, token_usage = run_groq_interleaved(
                 messages=planner_messages,
                 system=system,

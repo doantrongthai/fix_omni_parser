@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Step2_OmniParserParseRequest",
+  "description": "Schema for HTTP POST /parse/ request sent to OmniParser FastAPI server",
+  "type": "object",
+  "required": [
+    "base64_image"
+  ],
+  "properties": {
+    "base64_image": {
+      "type": "string",
+      "description": "Base64 encoded string of the desktop screenshot"
+    }
+  }
+}

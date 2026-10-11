@@ -1,0 +1,36 @@
+{
+  "engine": "easyocr",
+  "text_threshold": 0.8,
+  "extracted_texts": [
+    {
+      "text": "Search",
+      "bbox_normalized": [
+        0.38,
+        0.026,
+        0.435,
+        0.052
+      ],
+      "confidence": 0.97
+    },
+    {
+      "text": "DeepMind Robotics",
+      "bbox_normalized": [
+        0.12,
+        0.15,
+        0.285,
+        0.18
+      ],
+      "confidence": 0.94
+    },
+    {
+      "text": "Subscriptions",
+      "bbox_normalized": [
+        0.012,
+        0.22,
+        0.09,
+        0.245
+      ],
+      "confidence": 0.99
+    }
+  ]
+}

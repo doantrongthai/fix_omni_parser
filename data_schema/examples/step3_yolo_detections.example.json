@@ -1,0 +1,51 @@
+{
+  "model_version": "microsoft/OmniParser-v2.0-yolov8x",
+  "box_threshold": 0.05,
+  "total_detected": 4,
+  "detections": [
+    {
+      "bbox_normalized": [
+        0.354,
+        0.021,
+        0.621,
+        0.058
+      ],
+      "confidence": 0.92,
+      "class_id": 0,
+      "label": "icon"
+    },
+    {
+      "bbox_normalized": [
+        0.625,
+        0.021,
+        0.655,
+        0.058
+      ],
+      "confidence": 0.88,
+      "class_id": 0,
+      "label": "icon"
+    },
+    {
+      "bbox_normalized": [
+        0.015,
+        0.018,
+        0.075,
+        0.062
+      ],
+      "confidence": 0.95,
+      "class_id": 0,
+      "label": "icon"
+    },
+    {
+      "bbox_normalized": [
+        0.945,
+        0.018,
+        0.985,
+        0.062
+      ],
+      "confidence": 0.84,
+      "class_id": 0,
+      "label": "icon"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Step6_LLMAgentActionDecision",
+  "description": "Schema of the structured decision output by Multimodal LLM (DeepSeek-R1 / Groq / OpenAI)",
+  "type": "object",
+  "required": [
+    "Reasoning",
+    "Next Action"
+  ],
+  "properties": {
+    "Reasoning": {
+      "type": "string",
+      "description": "Detailed reasoning explaining current screen context and the logical rationale for the chosen action"
+    },
+    "Next Action": {
+      "type": "string",
+      "description": "Action name and description: left_click, type, right_click, double_click, hover, scroll_down, scroll_up, wait, or None"
+    },
+    "Box ID": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "description": "Target numeric Box ID identified from the SoM annotated image"
+    },
+    "value": {
+      "type": "string",
+      "description": "String text value to type into the targeted input element (required if Next Action is 'type')"
+    }
+  }
+}

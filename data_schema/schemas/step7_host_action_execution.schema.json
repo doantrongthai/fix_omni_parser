@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Step7_HostExecutionDispatch",
+  "description": "Schema for hardware action execution request sent to Linux / Windows Host Server",
+  "type": "object",
+  "required": [
+    "action"
+  ],
+  "properties": {
+    "action": {
+      "type": "string",
+      "enum": [
+        "mouse_click",
+        "double_click",
+        "right_click",
+        "mouse_move",
+        "type",
+        "press_key",
+        "scroll"
+      ]
+    },
+    "point": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      },
+      "minItems": 2,
+      "maxItems": 2,
+      "description": "[x, y] absolute physical screen coordinates calculated from Box ID center"
+    },
+    "text": {
+      "type": "string",
+      "description": "Text content to type into OS keyboard stream"
+    },
+    "key": {
+      "type": "string",
+      "description": "Special key name such as 'enter', 'tab', 'backspace', 'esc'"
+    },
+    "clicks": {
+      "type": "integer"
+    }
+  }
+}

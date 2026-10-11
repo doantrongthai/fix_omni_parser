@@ -177,3 +177,4 @@ Mở **3 cửa sổ Terminal**:
 | **`RuntimeError: asyncio.run() cannot be called from running loop`** | Chạy `uvicorn.run()` trực tiếp trong notebook Colab | File `omniparser_colab_server.ipynb` đã sửa chạy trong `threading.Thread` riêng, không bao giờ bị lỗi này nữa. |
 | **Chụp màn hình 1 phát rồi đứng im bất động** | Gọi LLM bị lỗi (Groq API Key sai/hết hạn hoặc sai tên model) | 1. Tạo API Key Groq mới tại [console.groq.com](https://console.groq.com).<br>2. Model đúng là `deepseek-r1-distill-llama-70b` (đã fix trong code). |
 | **`Windows Host is not responding` khi khởi động `app.py`** | Terminal 1 (`linux_host_server.py`) chưa chạy | Phải bật Terminal 1 trước để cổng 5000 hoạt động rồi mới chạy Terminal 2. |
+

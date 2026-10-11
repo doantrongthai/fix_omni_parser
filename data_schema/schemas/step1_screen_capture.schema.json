@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Step1_ScreenCaptureResponse",
+  "description": "Schema for screen capture output from Host Server (Linux / Windows)",
+  "type": "object",
+  "required": [
+    "status",
+    "width",
+    "height",
+    "screenshot_uuid",
+    "base64_image"
+  ],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": [
+        "success",
+        "error"
+      ]
+    },
+    "width": {
+      "type": "integer",
+      "description": "Screen width in physical pixels"
+    },
+    "height": {
+      "type": "integer",
+      "description": "Screen height in physical pixels"
+    },
+    "scale_factor": {
+      "type": "number",
+      "description": "Display scaling factor (e.g. 1.0 or 1.25)"
+    },
+    "screenshot_uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "base64_image": {
+      "type": "string",
+      "description": "Raw screenshot image encoded as Base64 PNG"
+    },
+    "timestamp": {
+      "type": "number",
+      "description": "Unix timestamp in seconds"
+    }
+  }
+}

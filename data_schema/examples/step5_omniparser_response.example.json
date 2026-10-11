@@ -1,0 +1,54 @@
+{
+  "som_image_base64": "iVBORw0KGgoAAAANSUhEUgAAB4AAAAQ4CAYAAABv2i9vAAA...[TRUNCATED_SOM_ANNOTATED_BASE64]",
+  "parsed_content_list": [
+    {
+      "type": "text",
+      "bbox": [
+        0.026,
+        0.38,
+        0.052,
+        0.435
+      ],
+      "interactivity": false,
+      "content": "Search",
+      "source": "box_ocr_content_ocr"
+    },
+    {
+      "type": "icon",
+      "bbox": [
+        0.021,
+        0.354,
+        0.058,
+        0.621
+      ],
+      "interactivity": true,
+      "content": "YouTube search input box with placeholder Search",
+      "source": "box_yolo_content_florence"
+    },
+    {
+      "type": "icon",
+      "bbox": [
+        0.021,
+        0.625,
+        0.058,
+        0.655
+      ],
+      "interactivity": true,
+      "content": "magnifying glass search button icon",
+      "source": "box_yolo_content_florence"
+    },
+    {
+      "type": "icon",
+      "bbox": [
+        0.018,
+        0.015,
+        0.062,
+        0.075
+      ],
+      "interactivity": true,
+      "content": "YouTube red play logo button",
+      "source": "box_yolo_content_florence"
+    }
+  ],
+  "latency": 1.482
+}
